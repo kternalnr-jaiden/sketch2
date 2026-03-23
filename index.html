@@ -1,0 +1,659 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>🎨 우리 가족 색칠공부</title>
+<link href="https://fonts.googleapis.com/css2?family=Nanum+Round+Square:wght@400;700;800&family=Jua&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F0F7FF;
+    --primary: #4D96FF;
+    --shadow: 0 8px 32px rgba(0,0,0,0.12);
+    --radius: 24px;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    font-family: 'Jua', sans-serif;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 16px;
+    overflow-x: hidden;
+  }
+
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(circle at 10% 20%, #FFD93D22 0%, transparent 40%),
+      radial-gradient(circle at 90% 80%, #FF6B6B22 0%, transparent 40%),
+      radial-gradient(circle at 80% 10%, #6BCB7722 0%, transparent 35%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .app-wrapper {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 16px;
+  }
+
+  header { text-align: center; padding: 8px 0 4px; }
+
+  header h1 {
+    font-size: clamp(22px, 5vw, 32px);
+    color: var(--primary);
+    text-shadow: 3px 3px 0 #FFD93D, 5px 5px 0 rgba(77,150,255,0.15);
+    line-height: 1.2;
+  }
+
+  header p {
+    font-size: 14px;
+    color: #aaa;
+    font-family: 'Nanum Round Square', sans-serif;
+    margin-top: 4px;
+  }
+
+  /* ── 탭 ── */
+  .page-selector {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+    width: 100%;
+    background: white;
+    border-radius: var(--radius);
+    padding: 10px;
+    box-shadow: var(--shadow);
+  }
+
+  .page-tab {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 4px;
+    padding: 12px 6px;
+    border-radius: 14px;
+    border: none;
+    background: #F7F7F7;
+    font-family: 'Jua', sans-serif;
+    font-size: 13px;
+    color: #999;
+    cursor: pointer;
+    transition: all 0.25s ease;
+    -webkit-tap-highlight-color: transparent;
+    line-height: 1.3;
+    text-align: center;
+  }
+
+  .page-tab .tab-emoji { font-size: 22px; }
+
+  .page-tab.active {
+    background: var(--primary);
+    color: white;
+    box-shadow: 0 4px 16px rgba(77,150,255,0.4);
+    transform: scale(1.03);
+  }
+
+  /* ── 캔버스 ── */
+  .canvas-wrapper {
+    width: 100%;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 12px;
+  }
+
+  .canvas-container {
+    position: relative;
+    width: 100%;
+    border-radius: 16px;
+    overflow: hidden;
+    background: white;
+    border: 2px solid #F0F0F0;
+    touch-action: none;
+    transition: opacity 0.2s;
+  }
+
+  .canvas-container.fade-out { opacity: 0; }
+
+  #drawCanvas {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    touch-action: none;
+    cursor: crosshair;
+    display: block;
+  }
+
+  #drawCanvas.eraser-mode { cursor: cell; }
+
+  #coloringImage {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: fill;
+    mix-blend-mode: multiply;
+    pointer-events: none;
+    display: block;
+  }
+
+  /* ── 팔레트 ── */
+  .palette-section {
+    width: 100%;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+  }
+
+  .section-label {
+    font-size: 13px;
+    color: #bbb;
+    font-family: 'Nanum Round Square', sans-serif;
+    font-weight: 700;
+    margin-bottom: 12px;
+    letter-spacing: 1px;
+  }
+
+  .palette {
+    display: grid;
+    grid-template-columns: repeat(10, 1fr);
+    gap: 7px;
+    margin-bottom: 14px;
+  }
+
+  .color-btn {
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    cursor: pointer;
+    transition: transform 0.15s;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .color-btn:active { transform: scale(0.9); }
+
+  .color-btn.selected {
+    transform: scale(1.2);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    outline: 3px solid #333;
+    outline-offset: 2px;
+  }
+
+  .custom-color-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .custom-color-row label {
+    font-size: 13px;
+    color: #aaa;
+    font-family: 'Nanum Round Square', sans-serif;
+    font-weight: 700;
+  }
+
+  input[type=color] {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    border: 3px solid white;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+    cursor: pointer;
+    padding: 2px;
+  }
+
+  /* ── 도구 ── */
+  .tools-section {
+    width: 100%;
+    background: white;
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 14px;
+  }
+
+  .brush-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+
+  .brush-row label {
+    font-size: 14px;
+    color: #888;
+    font-family: 'Nanum Round Square', sans-serif;
+    white-space: nowrap;
+    min-width: 56px;
+  }
+
+  input[type=range] {
+    flex: 1;
+    height: 8px;
+    border-radius: 99px;
+    -webkit-appearance: none;
+    appearance: none;
+    background: linear-gradient(to right, var(--primary) 0%, var(--primary) var(--val, 40%), #eee var(--val, 40%), #eee 100%);
+    outline: none;
+  }
+
+  input[type=range]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    background: var(--primary);
+    box-shadow: 0 2px 8px rgba(77,150,255,0.5);
+    cursor: pointer;
+  }
+
+  .brush-preview {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--primary);
+    transition: width 0.15s, height 0.15s, background 0.15s;
+    flex-shrink: 0;
+  }
+
+  .action-btns {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 10px;
+  }
+
+  .action-btn {
+    padding: 14px 8px;
+    border-radius: 16px;
+    border: none;
+    font-family: 'Jua', sans-serif;
+    font-size: 15px;
+    cursor: pointer;
+    transition: transform 0.15s;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    -webkit-tap-highlight-color: transparent;
+  }
+
+  .action-btn .btn-icon { font-size: 22px; }
+  .action-btn:active { transform: scale(0.95); }
+
+  .btn-eraser { background: #FFF0F0; color: #FF6B6B; }
+  .btn-eraser.active { background: #FF6B6B; color: white; box-shadow: 0 4px 16px rgba(255,107,107,0.4); }
+  .btn-clear  { background: #FFF8E0; color: #E6A817; }
+  .btn-save   { background: #F0FFF4; color: #2D9B4E; }
+
+  /* ── 토스트 ── */
+  .toast {
+    position: fixed;
+    bottom: 32px;
+    left: 50%;
+    transform: translateX(-50%) translateY(100px);
+    background: #333;
+    color: white;
+    padding: 14px 28px;
+    border-radius: 999px;
+    font-family: 'Jua', sans-serif;
+    font-size: 16px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.25);
+    transition: transform 0.4s cubic-bezier(.34,1.56,.64,1);
+    z-index: 9999;
+    pointer-events: none;
+  }
+
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  @media (max-width: 380px) {
+    .palette { grid-template-columns: repeat(8, 1fr); gap: 6px; }
+    .action-btn { font-size: 13px; }
+    .action-btn .btn-icon { font-size: 18px; }
+    .page-tab { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="app-wrapper">
+
+  <header>
+    <h1>💕 우리 가족 색칠공부</h1>
+    <p>소중한 가족 사진을 예쁘게 색칠해봐요!</p>
+  </header>
+
+  <!-- 탭 -->
+  <div class="page-selector">
+    <button class="page-tab active" data-page="0" onclick="selectPage(0)">
+      <span class="tab-emoji">👨‍👩‍👧</span>
+      가족사진 1
+    </button>
+    <button class="page-tab" data-page="1" onclick="selectPage(1)">
+      <span class="tab-emoji">⛵</span>
+      가족사진 2
+    </button>
+    <button class="page-tab" data-page="2" onclick="selectPage(2)">
+      <span class="tab-emoji">👕</span>
+      가족사진 3
+    </button>
+  </div>
+
+  <!-- 캔버스 -->
+  <div class="canvas-wrapper">
+    <div class="canvas-container" id="canvasContainer">
+      <canvas id="drawCanvas"></canvas>
+      <img id="coloringImage" src="images/page1.png" alt="색칠 도안" crossorigin="anonymous">
+    </div>
+  </div>
+
+  <!-- 팔레트 -->
+  <div class="palette-section">
+    <div class="section-label">🌈 색깔을 골라요</div>
+    <div class="palette" id="palette"></div>
+    <div class="custom-color-row">
+      <label>직접 고르기</label>
+      <input type="color" id="customColor" value="#4D96FF" oninput="pickCustomColor(this.value)">
+    </div>
+  </div>
+
+  <!-- 도구 -->
+  <div class="tools-section">
+    <div class="section-label">🖌️ 도구</div>
+
+    <div class="brush-row">
+      <label>붓 크기</label>
+      <input type="range" id="brushSlider" min="5" max="60" value="25"
+        oninput="changeBrushSize(this.value)">
+      <div class="brush-preview" id="brushPreview"></div>
+    </div>
+
+    <div class="action-btns">
+      <button class="action-btn btn-eraser" id="eraserBtn" onclick="toggleEraser()">
+        <span class="btn-icon">🧹</span>
+        지우개
+      </button>
+      <button class="action-btn btn-clear" onclick="clearCanvas()">
+        <span class="btn-icon">✨</span>
+        처음부터
+      </button>
+      <button class="action-btn btn-save" onclick="saveImage()">
+        <span class="btn-icon">💾</span>
+        저장하기
+      </button>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── 도안 목록 ──
+const PAGES = [
+  { src: 'images/page1.png', label: '가족사진1', ratio: 768/512 },
+  { src: 'images/page2.png', label: '가족사진2', ratio: 768/512 },
+  { src: 'images/page3.png', label: '가족사진3', ratio: 768/1024 },
+];
+
+let currentPageIndex = 0;
+const savedCanvasData = new Array(PAGES.length).fill(null);
+
+// ── 팔레트 색상 ──
+const COLORS = [
+  '#FF5252', '#FF8C00', '#FFD93D', '#ADFF2F',
+  '#6BCB77', '#4D96FF', '#C77DFF', '#FF69B4',
+  '#A0522D', '#888888', '#333333', '#FFFFFF',
+  '#FFB3BA', '#FFDAB9', '#FFFACD', '#E0FFD1',
+  '#B3E5FC', '#E1BEE7', '#F8BBD9', '#D7CCC8',
+];
+
+// ── 캔버스 설정 ──
+const canvas        = document.getElementById('drawCanvas');
+const ctx           = canvas.getContext('2d');
+const container     = document.getElementById('canvasContainer');
+const coloringImage = document.getElementById('coloringImage');
+
+function setAspectRatio(index) {
+  // 이미지 비율에 맞게 컨테이너 높이 조정
+  const ratio = PAGES[index].ratio;
+  container.style.paddingTop = (ratio * 100) + '%';
+}
+
+function resizeCanvas() {
+  const saved = ctx.getImageData(0, 0, canvas.width, canvas.height);
+  canvas.width  = container.clientWidth;
+  canvas.height = container.clientHeight;
+  ctx.putImageData(saved, 0, 0);
+}
+
+new ResizeObserver(() => resizeCanvas()).observe(container);
+setAspectRatio(0);
+setTimeout(resizeCanvas, 50);
+
+// ── 그리기 상태 ──
+let painting = false;
+let currentColor = '#4D96FF';
+let brushSize = 25;
+let isEraser = false;
+let lastX = 0, lastY = 0;
+
+function getPos(e) {
+  const rect = canvas.getBoundingClientRect();
+  const scaleX = canvas.width  / rect.width;
+  const scaleY = canvas.height / rect.height;
+  const src = e.touches ? e.touches[0] : e;
+  return {
+    x: (src.clientX - rect.left) * scaleX,
+    y: (src.clientY - rect.top)  * scaleY,
+  };
+}
+
+function startDraw(e) {
+  e.preventDefault();
+  painting = true;
+  const { x, y } = getPos(e);
+  lastX = x; lastY = y;
+  ctx.beginPath();
+  if (isEraser) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.arc(x, y, brushSize * 0.75, 0, Math.PI * 2);
+    ctx.fillStyle = 'rgba(0,0,0,1)';
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+    ctx.fillStyle = currentColor;
+  }
+  ctx.fill();
+  ctx.globalCompositeOperation = 'source-over';
+}
+
+function doDraw(e) {
+  if (!painting) return;
+  e.preventDefault();
+  const { x, y } = getPos(e);
+
+  ctx.beginPath();
+  ctx.lineWidth = isEraser ? brushSize * 1.5 : brushSize;
+  ctx.lineCap   = 'round';
+  ctx.lineJoin  = 'round';
+
+  if (isEraser) {
+    ctx.globalCompositeOperation = 'destination-out';
+    ctx.strokeStyle = 'rgba(0,0,0,1)';
+  } else {
+    ctx.globalCompositeOperation = 'source-over';
+    ctx.strokeStyle = currentColor;
+  }
+
+  ctx.moveTo(lastX, lastY);
+  ctx.lineTo(x, y);
+  ctx.stroke();
+  ctx.globalCompositeOperation = 'source-over';
+  lastX = x; lastY = y;
+}
+
+function endDraw() { painting = false; ctx.beginPath(); }
+
+canvas.addEventListener('mousedown',  startDraw);
+canvas.addEventListener('mousemove',  doDraw);
+canvas.addEventListener('mouseup',    endDraw);
+canvas.addEventListener('mouseleave', endDraw);
+canvas.addEventListener('touchstart', startDraw, { passive: false });
+canvas.addEventListener('touchmove',  doDraw,    { passive: false });
+canvas.addEventListener('touchend',   endDraw);
+
+// ── 팔레트 ──
+function buildPalette() {
+  const palette = document.getElementById('palette');
+  palette.innerHTML = '';
+  COLORS.forEach(color => {
+    const btn = document.createElement('div');
+    btn.className = 'color-btn' + (color === currentColor ? ' selected' : '');
+    btn.style.background = color;
+    if (color === '#FFFFFF') btn.style.border = '3px solid #ddd';
+    btn.onclick = () => changeColor(color);
+    palette.appendChild(btn);
+  });
+}
+buildPalette();
+
+function changeColor(color) {
+  currentColor = color;
+  isEraser = false;
+  canvas.classList.remove('eraser-mode');
+  document.getElementById('eraserBtn').classList.remove('active');
+  document.getElementById('customColor').value = color;
+  updateBrushPreview();
+  buildPalette();
+}
+
+function pickCustomColor(color) { changeColor(color); }
+
+// ── 붓 크기 ──
+function changeBrushSize(val) {
+  brushSize = parseInt(val);
+  const slider = document.getElementById('brushSlider');
+  const pct = ((val - slider.min) / (slider.max - slider.min)) * 100;
+  slider.style.setProperty('--val', pct + '%');
+  updateBrushPreview();
+}
+
+function updateBrushPreview() {
+  const preview = document.getElementById('brushPreview');
+  const size = Math.min(Math.max(brushSize, 10), 40);
+  preview.style.width    = size + 'px';
+  preview.style.height   = size + 'px';
+  preview.style.background = isEraser ? '#ddd' : currentColor;
+  preview.style.border   = isEraser ? '2px dashed #bbb' : 'none';
+}
+changeBrushSize(25);
+
+// ── 지우개 ──
+function toggleEraser() {
+  isEraser = !isEraser;
+  document.getElementById('eraserBtn').classList.toggle('active', isEraser);
+  canvas.classList.toggle('eraser-mode', isEraser);
+  updateBrushPreview();
+}
+
+// ── 전체 지우기 ──
+function clearCanvas() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  showToast('✨ 깨끗하게 지워졌어요!');
+}
+
+// ── 저장 (CORS 안전) ──
+function saveImage() {
+  const img = new Image();
+  img.crossOrigin = 'anonymous';
+  img.onload = function() {
+    const off = document.createElement('canvas');
+    off.width  = canvas.width;
+    off.height = canvas.height;
+    const oc = off.getContext('2d');
+    oc.fillStyle = 'white';
+    oc.fillRect(0, 0, off.width, off.height);
+    oc.drawImage(canvas, 0, 0);
+    oc.globalCompositeOperation = 'multiply';
+    oc.drawImage(img, 0, 0, off.width, off.height);
+    oc.globalCompositeOperation = 'source-over';
+
+    const link = document.createElement('a');
+    link.download = `가족색칠_${PAGES[currentPageIndex].label}_${Date.now()}.png`;
+    link.href = off.toDataURL('image/png');
+    link.click();
+    showToast('💾 저장했어요! 잘했어요 🎉');
+  };
+  img.onerror = function() {
+    // 도안 합성 실패시 색칠만 저장
+    const off = document.createElement('canvas');
+    off.width  = canvas.width;
+    off.height = canvas.height;
+    const oc = off.getContext('2d');
+    oc.fillStyle = 'white';
+    oc.fillRect(0, 0, off.width, off.height);
+    oc.drawImage(canvas, 0, 0);
+
+    const link = document.createElement('a');
+    link.download = `가족색칠_${PAGES[currentPageIndex].label}_${Date.now()}.png`;
+    link.href = off.toDataURL('image/png');
+    link.click();
+    showToast('💾 저장했어요! 잘했어요 🎉');
+  };
+  img.src = PAGES[currentPageIndex].src + '?t=' + Date.now();
+}
+
+// ── 페이지 전환 ──
+function selectPage(index) {
+  if (index === currentPageIndex) return;
+  savedCanvasData[currentPageIndex] = ctx.getImageData(0, 0, canvas.width, canvas.height);
+
+  document.querySelectorAll('.page-tab').forEach((btn, i) => {
+    btn.classList.toggle('active', i === index);
+  });
+
+  currentPageIndex = index;
+  container.classList.add('fade-out');
+
+  setTimeout(() => {
+    // 비율 먼저 변경
+    setAspectRatio(index);
+    coloringImage.src = PAGES[index].src;
+
+    setTimeout(() => {
+      // 비율 변경 후 캔버스 크기 재설정
+      canvas.width  = container.clientWidth;
+      canvas.height = container.clientHeight;
+      if (savedCanvasData[index]) ctx.putImageData(savedCanvasData[index], 0, 0);
+      container.classList.remove('fade-out');
+    }, 50);
+  }, 200);
+}
+
+// ── 토스트 ──
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2400);
+}
+</script>
+</body>
+</html>
